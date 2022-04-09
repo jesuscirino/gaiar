@@ -1,13 +1,11 @@
-import logging
 from binance.spot import Spot as Client
 
 from config import SECRET_KEY as secret
 from config import API_KEY as key
 from config import BASE_URL as base
-from gr import *
+import aux.gr as _
 
 from rich.console import Console
-from rich.logging import RichHandler
 from rich.traceback import install
 install()
 
@@ -27,6 +25,8 @@ if __name__ == "__main__":
     c.print(df_balances.info())
     c.print(df_balances[df_balances['free']>0])
     c.print(client.klines("XRPBNB", interval="1m", limit=1))
+    p = {'symbol':"XRPBUSD", 'interval':"1m", 'limit':2}
+    c.print(_._get_klines(client.klines,p))
     
     c.print(pd.to_datetime(1649461080000, unit='ms'))
     i = pd.date_range("2022-04-08 18:45:00", periods=1, freq="T")
