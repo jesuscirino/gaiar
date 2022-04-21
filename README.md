@@ -8,3 +8,5 @@ Recuerda:
 - conda create --name gaiar
 - conda activate gaiar
 - instala requirementsGAIAR.txt
+- conda install gcc
+- conda install -c conda-forge prophet

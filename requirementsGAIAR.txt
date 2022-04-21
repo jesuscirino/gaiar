@@ -1,3 +1,8 @@
 rich==10.16.2
 requests==2.27.1
 pandas==1.4.1
+matplotlib==3.5.1
+plotly==5.7.0
+mplfinance
+pystan==2.19.1.1
+prophet==1.0.1
