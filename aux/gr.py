@@ -4,10 +4,21 @@ import logging
 import pandas as pd
 from prophet import Prophet
 from rich.logging import RichHandler
+from rich.progress import track
 from rich.traceback import install
 install()
-
-def _debugit(msg):
+def __get_dt(intervalo: str):
+    if 'm' in intervalo:
+        return timedelta(minutes=int(intervalo[0]))
+    if 'h' in intervalo:
+        return timedelta(hours=int(intervalo[0]))
+    if 'd' in intervalo:
+        return timedelta(days=int(intervalo[0]))
+    if 'w' in intervalo:
+        return timedelta(weeks=int(intervalo[0]))
+    else:
+         return timedelta(-1)
+def _debugit(msg: str):
 
     logging.basicConfig(
         level="NOTSET",
@@ -18,23 +29,25 @@ def _debugit(msg):
     #logging.info(msg)
     logging.debug(msg)
 
-def _get_klines(client_klines , params: dict) -> list:
+def _get_klines(client_klines , params: dict) -> pd.DataFrame:
     start = datetime(*params['start'])
     end   = datetime.now() if params['end'] is None else datetime(*params['end'])
 
     list_data = []
     intervalo = params['interval']
-    dt =  timedelta(minutes=int(intervalo[0]))
+    dt =  __get_dt(intervalo)
     aux_start = start
     aux_end = end
     while( (end - aux_start) >= timedelta(0)):
         if ((end - aux_start)>dt*400):
             aux_end = aux_start + dt*400
         _list = client_klines(symbol=params['symbol'], \
-            interval=intervalo,limit=params['limit'],\
+            interval=intervalo,limit=None, \
             startTime=int(aux_start.timestamp()*1000), \
             endTime=int(aux_end.timestamp()*1000))
         list_data.extend(_list)
+        for n in track(range(1), description="..."+str(aux_start)): 
+            pass
         aux_start = aux_end + dt
         aux_end = end
     
@@ -45,12 +58,12 @@ def _get_klines(client_klines , params: dict) -> list:
                      'Volume':'float'})
     return df
 
-def _df_forecast(df , frecuency: str, n_futures: int) :
-    df['y'] = df['Close'].copy()
+def _df_forecast(df: pd.DataFrame, type_price:str,  n_futures: int, frequency:str)-> pd.DataFrame:
+    df['y'] = df[type_price].copy()
     df['ds'] = df['Timestamp']
     m = Prophet()
     m.fit(df)
-    future = m.make_future_dataframe(periods=n_futures,freq=frecuency )
+    future = m.make_future_dataframe(periods=n_futures, freq=frequency)
     forecast = m.predict(future)
-    m.plot(forecast)
-    return forecast
+    #m.plot(forecast)
+    return  forecast

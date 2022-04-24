@@ -50,7 +50,7 @@ if __name__ == "__main__":
     #df = save_csv('BTCUSDT-1h.csv', 'BTCUSDT', '1h', (2017,8,14,0,0))
     df = pd.read_csv('BTCUSDT-1h.csv')
     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
-    df = df[df['Timestamp']>=datetime(2022,2,11,0,0)]
+    df = df[df['Timestamp']>=datetime(2021,1,2,0,0)]
     df = df[df['Timestamp']<datetime(2022,4,24,7,0)]
     #df = df.between_time('2022-3-17-0-0', '2022-4-11-0-0')
     for i in range(4):
