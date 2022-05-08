@@ -11,6 +11,7 @@ import aux.gr as _
 from rich.console import Console
 from rich.traceback import install
 install()
+c = Console()
 def account_info(client: Client) -> dict:
     _info = client.account(recvWindow=6000)
     df_balances = pd.DataFrame(_info.pop('balances')).astype({'free':'float', 'locked':'float'})
@@ -30,9 +31,12 @@ def save_csv(file_name: str, symbol:str, interval: str, start: tuple) -> pd.Data
 def plot_candle(df: pd.DataFrame, df_forecast: pd.DataFrame, df_forecastL: pd.DataFrame, df_forecastH: pd.DataFrame):
     df= df.set_index("Timestamp")
     df_forecast= df_forecast.set_index("ds")
-    yhat = [mpf.make_addplot(df_forecast['yhat']),\
-        mpf.make_addplot(df_forecast['yhat_lower']),\
-        mpf.make_addplot(df_forecast['yhat_upper'])]
+    
+    yhat = [mpf.make_addplot(df_forecast['yhat'], color='gray', width=3 ),\
+        mpf.make_addplot(df_forecast['yhat_lower'], color='r', width=5 ),\
+        mpf.make_addplot(df_forecast['trend_lower'], color='white', width=2 ),\
+        mpf.make_addplot(df_forecast['trend_upper'], color='white', width=2 ),\
+        mpf.make_addplot(df_forecast['yhat_upper'], color='g', width=5 )]
     kwargs = dict(type='candle',volume=False,figsize=(10,6),figscale=0.95)
     #kwargs = dict(type='candle',mav=(14,56),volume=True,figratio=(4,3),figscale=0.95)
     # Create my own `marketcolors` to use with the `nightclouds` style:
@@ -43,33 +47,39 @@ def plot_candle(df: pd.DataFrame, df_forecast: pd.DataFrame, df_forecastL: pd.Da
     #df= df.tz_localize("UTC").tz_convert("America/Mexico_City")
     mpf.plot(df, **kwargs, style=s, addplot=yhat)
 
-if __name__ == "__main__":
-    c = Console()
+def show_info_dataframe (df: pd.DataFrame, head:int, tail:int, is_forecast=False):
+    if is_forecast:
+        df = df[["ds","trend", "yhat_lower", "yhat_upper", "trend_lower", "trend_upper", "yhat"]]
+    c.print(df.head(head))
+    c.print(df.tail(tail))
+    c.print(df.info())
+
+def run_predict(symbol:str, temporality:str, futures:int, start:list, end:list, yhat_LH=False):
     client = Client(key, secret, base_url=base)
     c.print(account_info(client))
-    #df = save_csv('BTCUSDT-1h.csv', 'BTCUSDT', '1h', (2017,8,14,0,0))
-    df = pd.read_csv('BTCUSDT-1h.csv')
+    #df = save_csv(f"{symbol}-{temporality}.csv", symbol, temporality, start )
+    df = pd.read_csv(f"{symbol}-{temporality}.csv")
     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
-    df = df[df['Timestamp']>=datetime(2022,2,11,0,0)]
-    df = df[df['Timestamp']<datetime(2022,4,24,7,0)]
-    #df = df.between_time('2022-3-17-0-0', '2022-4-11-0-0')
-    for i in range(4):
+    df = df[df['Timestamp']>=datetime(*start)]
+    df = df[df['Timestamp']<datetime(*end)]
+    show_info_dataframe(df, 2, futures)
+    for i in range(futures):
         df = pd.concat([df,df[-1:]])
-    c.print(df.head())
-    c.print(df.tail(1))
-    c.print(df.info())
-    forecast = _._df_forecast(df, "Close", n_futures=4, frequency='1h')
-    #f_low = _._df_forecast(df, "Low", n_futures=0, frequency='1h')
-    #f_high = _._df_forecast(df, "High", n_futures=0, frequency='1h')
-    c.print( forecast.info())
-    #c.print(forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].head(1))
-    #c.print(forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(1))
+    _._mark("data frame inicial")
+    forecast = _._df_forecast(df, "Close", n_futures=futures, frequency=temporality.capitalize())
+    show_info_dataframe(forecast, 2, futures, True)
+    if yhat_LH:
+        f_low = _._df_forecast(df, "Low", n_futures=0, frequency='1h')
+        f_high = _._df_forecast(df, "High", n_futures=0, frequency='1h')
+        plot_candle(df, forecast, f_low, f_high )
+        return
 
-    #plot_candle(df, forecast, f_low, f_high )
     plot_candle(df, forecast, forecast, forecast )
 
 
+if __name__ == "__main__":
+    symbol = "BTCUSDT"
+    temporality = "1d"
+    start , end, futures, yhat_LH = [2022, 1, 23, 0, 0 ], [2022, 5, 6, 0, 0], 155, False
 
-    #c.print(pd.to_datetime(1649461080000, unit='ms'))
-    #i = pd.date_range("2022-04-08 18:45:00", periods=1, freq="T")
-    #c.print(type((i - pd.Timestamp("1970-01-01 00:00:00")) // pd.Timedelta("1ms")))
+    run_predict(symbol, temporality, futures, start, end)

@@ -67,3 +67,10 @@ def _df_forecast(df: pd.DataFrame, type_price:str,  n_futures: int, frequency:st
     forecast = m.predict(future)
     #m.plot(forecast)
     return  forecast
+
+def _mark(msg):
+    """ Solo útil para marcar funciones en la salida de la terminal
+    """
+
+    for n in track(range(1), description="..."+str(msg)): 
+        pass
