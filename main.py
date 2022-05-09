@@ -22,9 +22,24 @@ def account_info(client: Client) -> dict:
     return {'balances': df_balances[df_balances['free']>0], \
              'info': df_info}
 
-def save_csv(file_name: str, symbol:str, interval: str, start: tuple) -> pd.DataFrame:
-
+def save_csv(file_name: str, symbol:str, interval: str, start: list, update=False) -> pd.DataFrame:
+    """Guarda o actualiza un historial, dependiendo del parámetro :update:"""
     p = {'symbol':symbol,'interval':interval,'start':start , 'end': None}
+    if update:
+        df = pd.read_csv(file_name)
+        last = df[-1:]
+        c.print(last)
+        date_start = str(last['Timestamp'].iloc[0]).split(' ')
+        date_start[0] = str(date_start[0]).split('-')
+        date_start[1] = str(date_start[1]).split(':')
+        date_start = date_start[0] + date_start[1]
+        #La siguiente línea convierte a Horario UTC-5
+        date_start[3] = int(date_start[3]) - 5
+        p['start'] =[int(string) for string in date_start ]
+        c.print(date_start)
+        new_df = _._get_klines(client.klines,p)
+        c.print(new_df.info())
+        return pd.concat([df, new_df ], ignore_index=True)
     df = _._get_klines(client.klines,p)
     df.to_csv(file_name)
     return df
@@ -54,11 +69,11 @@ def show_info_dataframe (df: pd.DataFrame, head:int, tail:int, is_forecast=False
     c.print(df.tail(tail))
     c.print(df.info())
 
-def run_predict(symbol:str, temporality:str, futures:int, start:list, end:list, yhat_LH=False):
+def run_predict(symbol:str, temporality:str, futures:int, start:list, end:list, yhat_LH=False, new=False):
     client = Client(key, secret, base_url=base)
     c.print(account_info(client))
-    #df = save_csv(f"{symbol}-{temporality}.csv", symbol, temporality, start )
-    df = pd.read_csv(f"{symbol}-{temporality}.csv")
+    df = save_csv(f"{symbol}-{temporality}.csv", symbol, temporality, start, new )
+    #df = pd.read_csv(f"{symbol}-{temporality}.csv")
     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
     df = df[df['Timestamp']>=datetime(*start)]
     df = df[df['Timestamp']<datetime(*end)]
@@ -76,10 +91,10 @@ def run_predict(symbol:str, temporality:str, futures:int, start:list, end:list, 
 
     plot_candle(df, forecast, forecast, forecast )
 
-
 if __name__ == "__main__":
-    symbol = "BTCUSDT"
-    temporality = "1d"
-    start , end, futures, yhat_LH = [2022, 1, 23, 0, 0 ], [2022, 5, 6, 0, 0], 155, False
+    symbol = "ADABUSD"
+    temporality = "1m"
+    new = False
+    start , end, futures, yhat_LH = [2022, 1, 23, 0, 0 ], [2022, 5, 6, 0, 0], 15, new
 
-    run_predict(symbol, temporality, futures, start, end)
+    run_predict(symbol, temporality, futures, start, end, yhat_LH=False, new=new)

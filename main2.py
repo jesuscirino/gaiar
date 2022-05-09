@@ -53,6 +53,7 @@ if __name__ == "__main__":
     df = df[df['Timestamp']>=datetime(2021,1,2,0,0)]
     df = df[df['Timestamp']<datetime(2022,4,24,7,0)]
     #df = df.between_time('2022-3-17-0-0', '2022-4-11-0-0')
+    #Esta línea es para unir 4 veces la misma ultima vela
     for i in range(4):
         df = pd.concat([df,df[-1:]])
     c.print(df.head())
