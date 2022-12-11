@@ -63,6 +63,7 @@ def _df_forecast(df: pd.DataFrame, type_price:str,  n_futures: int, frequency:st
     df['ds'] = df['Timestamp']
     m = Prophet()
     m.fit(df)
+    frequency = frequency.replace("m", "t") if "m" in frequency else frequency
     future = m.make_future_dataframe(periods=n_futures, freq=frequency)
     forecast = m.predict(future)
     #m.plot(forecast)

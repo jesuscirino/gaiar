@@ -25,6 +25,7 @@ def account_info(client: Client) -> dict:
 def save_csv(file_name: str, symbol:str, interval: str, start: list, update=False) -> pd.DataFrame:
     """Guarda o actualiza un historial, dependiendo del parámetro :update:"""
     p = {'symbol':symbol,'interval':interval,'start':start , 'end': None}
+    client = Client(key, secret, base_url=base)
     if update:
         df = pd.read_csv(file_name)
         last = df[-1:]
@@ -52,7 +53,7 @@ def plot_candle(df: pd.DataFrame, df_forecast: pd.DataFrame, df_forecastL: pd.Da
         mpf.make_addplot(df_forecast['trend_lower'], color='white', width=2 ),\
         mpf.make_addplot(df_forecast['trend_upper'], color='white', width=2 ),\
         mpf.make_addplot(df_forecast['yhat_upper'], color='g', width=5 )]
-    kwargs = dict(type='candle',volume=False,figsize=(10,6),figscale=0.95)
+    kwargs = dict(type='candle',volume=False,figsize=(10,6),figscale=1)
     #kwargs = dict(type='candle',mav=(14,56),volume=True,figratio=(4,3),figscale=0.95)
     # Create my own `marketcolors` to use with the `nightclouds` style:
     mc = mpf.make_marketcolors(up='lime',down='r',inherit=True)
@@ -69,19 +70,21 @@ def show_info_dataframe (df: pd.DataFrame, head:int, tail:int, is_forecast=False
     c.print(df.tail(tail))
     c.print(df.info())
 
-def run_predict(symbol:str, temporality:str, futures:int, start:list, end:list, yhat_LH=False, new=False):
+def run_predict(symbol:str, temporality:str, futures:int, start:list, end:list, yhat_LH=False, update=False):
     client = Client(key, secret, base_url=base)
     c.print(account_info(client))
-    df = save_csv(f"{symbol}-{temporality}.csv", symbol, temporality, start, new )
+    df = save_csv(f"{symbol}-{temporality}.csv", symbol, temporality, start, update )
     #df = pd.read_csv(f"{symbol}-{temporality}.csv")
     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
     df = df[df['Timestamp']>=datetime(*start)]
-    df = df[df['Timestamp']<datetime(*end)]
-    show_info_dataframe(df, 2, futures)
-    for i in range(futures):
-        df = pd.concat([df,df[-1:]])
+    df = df[df['Timestamp']<=datetime(*end)]
+
     _._mark("data frame inicial")
+    show_info_dataframe(df, 2, futures)
     forecast = _._df_forecast(df, "Close", n_futures=futures, frequency=temporality.capitalize())
+    reshape = forecast.shape[0] - df.shape[0]
+    for __ in range(reshape):
+        df = pd.concat([df,df[-1:]])
     show_info_dataframe(forecast, 2, futures, True)
     if yhat_LH:
         f_low = _._df_forecast(df, "Low", n_futures=0, frequency='1h')
@@ -92,9 +95,9 @@ def run_predict(symbol:str, temporality:str, futures:int, start:list, end:list, 
     plot_candle(df, forecast, forecast, forecast )
 
 if __name__ == "__main__":
-    symbol = "ADABUSD"
-    temporality = "1m"
-    new = False
-    start , end, futures, yhat_LH = [2022, 1, 23, 0, 0 ], [2022, 5, 6, 0, 0], 15, new
+    symbol = "ETHBUSD"
+    temporality = "5m"
+    start , end, futures, yhat_LH, update = [2022, 5, 12, 8, 0 ], [2022, 5, 23, 11, 39],\
+                                             14, False, True
 
-    run_predict(symbol, temporality, futures, start, end, yhat_LH=False, new=new)
+    run_predict(symbol, temporality, futures, start, end, yhat_LH, True)
